@@ -1,0 +1,446 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  SUPER_ADMIN
+  MODERATOR
+  EDITOR
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ARCHIVED
+  EXPIRED
+  REJECTED
+}
+
+enum LandType {
+  BUILDABLE
+  SERVICED
+  AGRICULTURAL
+  FOREST
+  SUBDIVISION
+  NON_BUILDABLE
+  COMMERCIAL
+  INDUSTRIAL
+  RURAL
+  OTHER
+}
+
+enum ListingType {
+  SELL
+  RENT
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+  SPAM
+}
+
+enum ReportReason {
+  FRAUD
+  DUPLICATE
+  INVALID_CONTENT
+  EXPIRED
+  WRONG_INFO
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  role          UserRole @default(ADMIN)
+  avatarUrl     String?
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  actions           AuditLog[]
+  listings          Listing[]    @relation("ListingAuthor")
+  updatedListings   Listing[]    @relation("ListingUpdater")
+  editorialPages    EditorialPage[]
+
+  @@map("users")
+}
+
+model Listing {
+  id              String        @id @default(cuid())
+  title           String
+  slug            String        @unique
+  description     String
+  shortDescription String?
+  price           Decimal       @db.Decimal(12, 2)
+  rentalPrice     Decimal?      @db.Decimal(12, 2)
+  pricePerSqm     Decimal?      @db.Decimal(10, 2)
+  surface         Decimal       @db.Decimal(10, 2)
+  landType        LandType
+  listingType     ListingType   @default(SELL)
+  status          ListingStatus @default(DRAFT)
+
+  address         String
+  city            String
+  postalCode      String
+  department      String
+  departmentCode  String
+  region          String
+  latitude        Decimal?      @db.Decimal(10, 7)
+  longitude       Decimal?      @db.Decimal(10, 7)
+
+  isServiced      Boolean       @default(false)
+  isBuildable     Boolean       @default(false)
+  isFenced        Boolean       @default(false)
+  hasWaterAccess  Boolean       @default(false)
+  hasElectricity  Boolean       @default(false)
+  hasRoadAccess   Boolean       @default(false)
+  isFlat          Boolean       @default(false)
+
+  coefOccupation  Decimal?      @db.Decimal(4, 2)
+  floorAreaRatio  Decimal?      @db.Decimal(4, 2)
+  maxHeight       Decimal?      @db.Decimal(6, 2)
+  minDivision     Decimal?      @db.Decimal(10, 2)
+
+  reference       String?
+  cadastralRef    String?
+  lotNumber       String?
+
+  isFeatured      Boolean       @default(false)
+  featuredUntil   DateTime?
+  isUrgent        Boolean       @default(false)
+  isExclusive     Boolean       @default(false)
+  viewCount       Int           @default(0)
+  contactCount    Int           @default(0)
+
+  publishedAt     DateTime?
+  archivedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  authorId        String
+  updatedById     String?
+
+  author          User          @relation("ListingAuthor", fields: [authorId], references: [id])
+  updater         User?         @relation("ListingUpdater", fields: [updatedById], references: [id])
+
+  categoryId      String?
+  category        Category?     @relation(fields: [categoryId], references: [id])
+
+  images          Media[]
+  documents       Document[]
+  favorites       Favorite[]
+  alerts          Alert[]
+  leads           Lead[]
+  comparisons     Comparison[]
+  reports         Report[]
+  seoMetadata     SeoMetadata?
+  auditLogs       AuditLog[]
+
+  @@index([status, city, department, landType, price, surface])
+  @@index([slug])
+  @@index([city, department])
+  @@index([landType])
+  @@index([status, publishedAt])
+  @@map("listings")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?
+  color       String?
+  isActive    Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  listings    Listing[]
+
+  @@map("categories")
+}
+
+model Media {
+  id          String   @id @default(cuid())
+  url         String
+  thumbnailUrl String?
+  blurHash    String?
+  alt         String?
+  caption     String?
+  width       Int?
+  height      Int?
+  size        Int?
+  mimeType    String?
+  isPrimary   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("media")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  mimeType    String
+  size        Int?
+  createdAt   DateTime @default(now())
+
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model SeoMetadata {
+  id            String   @id @default(cuid())
+  title         String?
+  description   String?
+  keywords      String?
+  ogImage       String?
+  canonicalUrl  String?
+  noIndex       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  listingId     String   @unique
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("seo_metadata")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  visitorId String
+  createdAt DateTime @default(now())
+
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([visitorId, listingId])
+  @@index([visitorId])
+  @@map("favorites")
+}
+
+model Alert {
+  id            String   @id @default(cuid())
+  visitorId     String
+  email         String?
+  name          String?
+  filters       Json
+  isActive      Boolean  @default(true)
+  frequency     String   @default("daily")
+  lastSentAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  listingId     String?
+  listing       Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([visitorId])
+  @@map("alerts")
+}
+
+model Lead {
+  id          String        @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  message     String
+  status      ContactStatus @default(NEW)
+  isRead      Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  listingId   String
+  listing     Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([status])
+  @@map("leads")
+}
+
+model Comparison {
+  id        String   @id @default(cuid())
+  visitorId String
+  createdAt DateTime @default(now())
+
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([visitorId, listingId])
+  @@map("comparisons")
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  reason      ReportReason
+  description String?
+  status      ReportStatus @default(PENDING)
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  listingId   String
+  listing     Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  entityType  String
+  entityId    String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  listingId   String?
+  listing     Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model EditorialPage {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  content     String
+  excerpt     String?
+  imageUrl    String?
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  authorId    String?
+  author      User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@map("editorial_pages")
+}
+
+model FaqEntry {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  category    String?
+  order       Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("faq_entries")
+}
+
+model Banner {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  imageUrl    String?
+  linkUrl     String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  startAt     DateTime?
+  endAt       DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("banners")
+}
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  visitorId   String
+  name        String?
+  filters     Json
+  email       String?
+  notify      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([visitorId])
+  @@map("saved_searches")
+}
+
+model FooterLink {
+  id        String   @id @default(cuid())
+  section   String
+  label     String
+  href      String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([section])
+  @@map("footer_links")
+}
+
+model SiteSetting {
+  id          String @id @default(cuid())
+  key         String @unique
+  value       String
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  type       String
+  title      String
+  message    String
+  link       String?
+  isRead     Boolean  @default(false)
+  entityType String?
+  entityId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Region {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("regions")
+}
