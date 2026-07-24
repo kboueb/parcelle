@@ -12,5 +12,4 @@ nginx/
 .vscode
 .idea
 .DS_Store
-prisma/migrations
 scripts/
