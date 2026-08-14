@@ -1,0 +1,103 @@
+# Déploiement production : build + push GHCR, puis déploiement SSH sur le serveur.
+#
+# Secrets GitHub requis (Settings → Secrets and variables → Actions) :
+#   SERVER_HOST    - IP ou domaine du serveur (ex: 203.0.113.10)
+#   SERVER_USER    - utilisateur SSH (ex: root ou un compte avec droits docker)
+#   SSH_KEY        - clé privée SSH de déploiement (voir .ssh/authorized_keys côté serveur)
+#   GHCR_TOKEN     - PAT GitHub avec scope read:packages (login du serveur vers ghcr.io)
+#
+# Côté serveur, .env.production doit exister (créé par deploy.sh) et contenir :
+#   DB_PASSWORD, NEXTAUTH_SECRET, NEXTAUTH_URL
+
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build & push image GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy sur le serveur
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Envoyer les fichiers docker-compose
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "docker-compose.yml,docker-compose.prod.yml"
+          target: "/opt/parcelles"
+          strip_components: 0
+
+      - name: Déployer (pull + up + migrations)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/parcelles
+            mkdir -p nginx/certs nginx/www
+            if [ ! -f .env.production ]; then
+              echo "ERREUR : .env.production absent. Lancer deploy.sh une première fois sur le serveur." >&2
+              exit 1
+            fi
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml pull app
+            docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d app
+            docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml exec -T app npx prisma migrate deploy
+            docker image prune -f

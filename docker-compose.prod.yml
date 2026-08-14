@@ -1,0 +1,9 @@
+# Override production : utilise l'image GHCR poussée par le workflow CD
+# au lieu de builder sur le serveur.
+# Requiert Docker Compose >= 2.24 (tag !reset). Déployé en SSH à côté de docker-compose.yml :
+#   docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  app:
+    build: !reset null
+    image: ghcr.io/kboueb/parcelle:latest
