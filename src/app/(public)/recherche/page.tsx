@@ -1,13 +1,14 @@
 import { Suspense } from "react"
 import { prisma } from "@/lib/prisma"
 import { ListingStatus } from "@prisma/client"
-import { notFound } from "next/navigation"
 import { FilterSidebar } from "@/components/public/FilterSidebar"
 import { ListingCard } from "@/components/public/ListingCard"
 import { SearchBar } from "@/components/public/SearchBar"
 import { ITEMS_PER_PAGE } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton"
 import { serializeListings } from "@/lib/serialize"
+import { getPageContent } from "@/lib/page-content"
+import { PageHero } from "@/components/public/PageHero"
 
 export const dynamic = "force-dynamic"
 
@@ -15,7 +16,7 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-async function SearchResults({ searchParams }: Props) {
+async function SearchResults({ searchParams, emptyTitle, emptyText }: Props & { emptyTitle: string; emptyText: string }) {
   const sp = await searchParams
   const page = Math.max(1, Number(sp.page) || 1)
   const skip = (page - 1) * ITEMS_PER_PAGE
@@ -92,8 +93,8 @@ async function SearchResults({ searchParams }: Props) {
 
       {listings.length === 0 ? (
         <div className="text-center py-16">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucune annonce trouvée</h3>
-          <p className="text-gray-500">Essayez de modifier vos critères de recherche</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{emptyTitle}</h3>
+          <p className="text-gray-500">{emptyText}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -138,33 +139,52 @@ async function SearchResults({ searchParams }: Props) {
 }
 
 export default async function SearchPage({ searchParams }: Props) {
+  const content = await getPageContent("recherche")
+  const sections = content.sections as any
+  const hero = sections.hero || {}
+  const empty = sections.empty || {}
+
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <SearchBar />
-      </div>
-      <div className="flex gap-8">
-        <aside className="hidden lg:block w-72 shrink-0">
-          <FilterSidebar />
-        </aside>
-        <div className="flex-1 min-w-0">
-          <Suspense fallback={
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-xl border border-gray-200 overflow-hidden">
-                  <Skeleton className="aspect-[4/3] rounded-none" />
-                  <div className="p-4 space-y-3">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-6 w-1/3" />
-                  </div>
-                </div>
-              ))}
+    <div className="flex-1">
+      {hero.enabled !== false ? (
+        <PageHero title={content.title} subtitle={content.subtitle} image={hero.image} ctaLabel={hero.ctaLabel} ctaUrl={hero.ctaUrl} />
+      ) : (
+        (content.title || content.subtitle) && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12">
+            <div className="mb-6">
+              {content.title && <h1 className="text-3xl font-bold text-gray-900">{content.title}</h1>}
+              {content.subtitle && <p className="text-gray-500 mt-1">{content.subtitle}</p>}
             </div>
-          }>
-            <SearchResults searchParams={searchParams} />
-          </Suspense>
+          </div>
+        )
+      )}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <SearchBar />
+        </div>
+        <div className="flex gap-8">
+          <aside className="hidden lg:block w-72 shrink-0">
+            <FilterSidebar />
+          </aside>
+          <div className="flex-1 min-w-0">
+            <Suspense fallback={
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-gray-200 overflow-hidden">
+                    <Skeleton className="aspect-[4/3] rounded-none" />
+                    <div className="p-4 space-y-3">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-6 w-1/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            }>
+              <SearchResults searchParams={searchParams} emptyTitle={empty.title || "Aucune annonce trouvée"} emptyText={empty.text || "Essayez de modifier vos critères de recherche"} />
+            </Suspense>
+          </div>
         </div>
       </div>
     </div>

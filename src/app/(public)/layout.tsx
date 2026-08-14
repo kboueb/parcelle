@@ -2,18 +2,22 @@ import { Header } from "@/components/public/Header"
 export const dynamic = "force-dynamic"
 import { Footer } from "@/components/public/Footer"
 import { BannerHero } from "@/components/public/BannerHero"
-import { getSiteName } from "@/lib/site-name"
+import { getSiteConfig } from "@/lib/site-config"
 
 export const dynamic = "force-dynamic"
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const siteName = await getSiteName()
+  const config = await getSiteConfig()
   return (
     <div className="flex min-h-screen flex-col">
-      <Header siteName={siteName} />
+      <Header
+        siteName={config.siteName}
+        siteLogoUrl={config.siteLogoUrl}
+        headerDisplay={config.headerDisplay}
+      />
       <BannerHero />
       <main className="flex-1">{children}</main>
-      <Footer siteName={siteName} />
+      <Footer siteName={config.siteName} siteLogoUrl={config.siteLogoUrl} />
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Menu, X, Heart, Bell, Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import type { HeaderDisplay } from "@/lib/site-config"
 
 const navLinks = [
   { label: "Acheter", href: "/recherche?listingType=SELL" },
@@ -13,18 +13,36 @@ const navLinks = [
   { label: "FAQ", href: "/faq" },
 ]
 
-export function Header({ siteName = "Parcelles" }: { siteName?: string }) {
+type Props = {
+  siteName?: string
+  siteLogoUrl?: string
+  headerDisplay?: HeaderDisplay
+}
+
+export function Header({ siteName = "Parcelles", siteLogoUrl = "", headerDisplay = "both" }: Props) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const showLogo = (headerDisplay === "logo" || headerDisplay === "both") && Boolean(siteLogoUrl)
+  const showPlaceholder = headerDisplay === "both" && !siteLogoUrl
+  const showTitle =
+    headerDisplay === "title" ||
+    headerDisplay === "both" ||
+    (headerDisplay === "logo" && !siteLogoUrl)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600">
-              <span className="text-sm font-bold text-white">P</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900">{siteName}</span>
+            {showLogo && (
+              <img src={siteLogoUrl} alt={siteName} className="h-9 w-auto" />
+            )}
+            {showPlaceholder && (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600">
+                <span className="text-sm font-bold text-white">{siteName.charAt(0)}</span>
+              </div>
+            )}
+            {showTitle && <span className="text-xl font-bold text-gray-900">{siteName}</span>}
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">

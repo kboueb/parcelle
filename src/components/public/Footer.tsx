@@ -27,7 +27,7 @@ const DEFAULT_LINKS: Record<string, { label: string; href: string }[]> = {
   ],
 }
 
-export async function Footer({ siteName = "Parcelles" }: { siteName?: string }) {
+export async function Footer({ siteName = "Parcelles", siteLogoUrl = "" }: { siteName?: string; siteLogoUrl?: string }) {
   let links: { section: string; label: string; href: string }[] = []
   let description = "La plateforme de référence pour l'achat et la location de terrains et parcelles en Côte d'Ivoire."
 
@@ -59,9 +59,13 @@ export async function Footer({ siteName = "Parcelles" }: { siteName?: string }) 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600">
-                <span className="text-xs font-bold text-white">P</span>
-              </div>
+              {siteLogoUrl ? (
+                <img src={siteLogoUrl} alt={siteName} className="h-7 w-auto" />
+              ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600">
+                  <span className="text-xs font-bold text-white">P</span>
+                </div>
+              )}
               <span className="text-lg font-bold text-gray-900">{siteName}</span>
             </div>
             <p className="text-sm text-gray-500">

@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Save, Globe, Phone, Share2, Search } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Save, Globe, Phone, Share2, Search, Eye } from "lucide-react"
 import { toast } from "sonner"
+import { ImageField } from "@/components/admin/ImageField"
+import type { HeaderDisplay } from "@/lib/site-config"
 
 const SECTIONS = [
   {
@@ -16,6 +19,18 @@ const SECTIONS = [
     icon: Globe,
     fields: [
       { key: "site_name", label: "Nom du site", placeholder: "Parcelles", type: "input" },
+      { key: "site_logo_url", label: "Logo", placeholder: "", type: "image" },
+      {
+        key: "header_display",
+        label: "Affichage du header",
+        placeholder: "",
+        type: "select",
+        options: [
+          { value: "both", label: "Logo et titre" },
+          { value: "title", label: "Titre uniquement" },
+          { value: "logo", label: "Logo uniquement" },
+        ],
+      },
       { key: "site_description", label: "Description du site", placeholder: "La plateforme de référence...", type: "textarea" },
       { key: "site_url", label: "URL du site", placeholder: "https://parcelles.ci", type: "input" },
       { key: "currency", label: "Devise", placeholder: "FCFA", type: "input" },
@@ -104,6 +119,13 @@ export default function AdminParametresPage() {
     }
   }
 
+  const siteName = values["site_name"] || "Parcelles"
+  const logo = values["site_logo_url"] || ""
+  const display: HeaderDisplay = values["header_display"] === "title" || values["header_display"] === "logo" ? values["header_display"] : "both"
+  const showLogo = (display === "logo" || display === "both") && Boolean(logo)
+  const showPlaceholder = display === "both" && !logo
+  const showTitle = display === "title" || display === "both" || (display === "logo" && !logo)
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -127,6 +149,40 @@ export default function AdminParametresPage() {
           {saving ? "Sauvegarde..." : "Sauvegarder"}
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+              <Eye className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <CardTitle>Aperçu du header</CardTitle>
+              <CardDescription>Rendu actuel de la barre de navigation avec ces réglages</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="border border-gray-200 rounded-lg">
+            <div className="flex h-16 items-center justify-between px-4">
+              <div className="flex items-center gap-2">
+                {showLogo && <img src={logo} alt={siteName} className="h-9 w-auto" />}
+                {showPlaceholder && (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600">
+                    <span className="text-sm font-bold text-white">{siteName.charAt(0)}</span>
+                  </div>
+                )}
+                {showTitle && <span className="text-xl font-bold text-gray-900">{siteName}</span>}
+              </div>
+              <div className="hidden md:flex items-center gap-6">
+                <span className="text-sm text-gray-400">Acheter</span>
+                <span className="text-sm text-gray-400">Louer</span>
+                <span className="text-sm text-gray-400">Villes</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {SECTIONS.map(section => (
         <Card key={section.id}>
@@ -152,6 +208,19 @@ export default function AdminParametresPage() {
                     placeholder={field.placeholder}
                     rows={3}
                   />
+                ) : field.type === "image" ? (
+                  <ImageField value={values[field.key] || ""} onChange={v => update(field.key, v)} folder="logos" label="Téléverser un logo" />
+                ) : field.type === "select" ? (
+                  <Select value={values[field.key] || "both"} onValueChange={v => update(field.key, v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     value={values[field.key] || ""}

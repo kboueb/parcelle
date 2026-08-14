@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, FileText, Image, MessageSquare, Flag,
   BarChart3, Settings, Users, BookOpen, HelpCircle, Bell,
-  Menu, X, MapPin, Layers, Map
+  Menu, X, MapPin, Layers, Map, PenLine
 } from "lucide-react"
 import { useState, useEffect } from "react"
 
@@ -19,6 +19,7 @@ const navItems = [
   { label: "Leads", href: "/admin/leads", icon: MessageSquare },
   { label: "Signalements", href: "/admin/signalements", icon: Flag },
   { label: "Pages éditoriales", href: "/admin/pages", icon: BookOpen },
+  { label: "Contenu des pages", href: "/admin/pages-contenu", icon: PenLine },
   { label: "FAQ", href: "/admin/faq", icon: HelpCircle },
   { label: "Bannières", href: "/admin/bannieres", icon: Bell },
   { label: "Notifications", href: "/admin/notifications", icon: Bell },

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { prisma } from "@/lib/prisma"
 import { ListingStatus } from "@prisma/client"
 import Link from "next/link"
@@ -5,23 +6,31 @@ import { Card, CardContent } from "@/components/ui/card"
 import { LAND_TYPE_LABELS } from "@/lib/constants"
 import { formatPrice } from "@/lib/utils"
 import { ArrowRight } from "lucide-react"
+import { getPageContent } from "@/lib/page-content"
+import { PageHero } from "@/components/public/PageHero"
 
 export const dynamic = "force-dynamic"
 
-export const metadata = {
-  title: "Tous les types de terrains",
-  description: "Découvrez tous les types de terrains disponibles : constructible, viabilisé, agricole, forestier, lotissement, non constructible.",
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getPageContent("types")
+  return {
+    title: content.seoTitle || undefined,
+    description: content.seoDescription || undefined,
+  }
 }
 
 export default async function TypesPage() {
-  const types = await prisma.listing.groupBy({
-    by: ["landType"],
-    where: { status: ListingStatus.PUBLISHED },
-    _count: true,
-    _min: { price: true },
-    _avg: { price: true, surface: true },
-    orderBy: { _count: { landType: "desc" } },
-  })
+  const [types, content] = await Promise.all([
+    prisma.listing.groupBy({
+      by: ["landType"],
+      where: { status: ListingStatus.PUBLISHED },
+      _count: true,
+      _min: { price: true },
+      _avg: { price: true, surface: true },
+      orderBy: { _count: { landType: "desc" } },
+    }),
+    getPageContent("types"),
+  ])
 
   const landTypeDescriptions: Record<string, { desc: string, color: string }> = {
     BUILDABLE: { desc: "Terrain où la construction est autorisée selon le PLU", color: "bg-emerald-50 border-emerald-200" },
@@ -36,12 +45,23 @@ export default async function TypesPage() {
     OTHER: { desc: "Autre type de terrain", color: "bg-gray-50 border-gray-200" },
   }
 
+  const sections = content.sections as any
+  const hero = sections.hero || {}
+
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Types de terrains</h1>
-        <p className="text-gray-500 mt-2">Explorez les annonces par type de terrain</p>
-      </div>
+    <div className="flex-1">
+      {hero.enabled !== false ? (
+        <PageHero title={content.title} subtitle={content.subtitle} image={hero.image} ctaLabel={hero.ctaLabel} ctaUrl={hero.ctaUrl} />
+      ) : (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">{content.title}</h1>
+            {content.subtitle && <p className="text-gray-500 mt-2">{content.subtitle}</p>}
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {types.map((type) => {
@@ -69,6 +89,7 @@ export default async function TypesPage() {
             </Link>
           )
         })}
+      </div>
       </div>
     </div>
   )

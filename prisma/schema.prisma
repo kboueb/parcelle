@@ -363,6 +363,20 @@ model FaqEntry {
   @@map("faq_entries")
 }
 
+model PageContent {
+  id            String   @id @default(cuid())
+  page          String   @unique
+  title         String?
+  subtitle      String?
+  content       Json     @default("{}")
+  seoTitle      String?
+  seoDescription String?
+  isActive      Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+
+  @@map("page_contents")
+}
+
 model Banner {
   id          String   @id @default(cuid())
   title       String
