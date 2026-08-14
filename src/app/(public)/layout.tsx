@@ -1,5 +1,4 @@
 import { Header } from "@/components/public/Header"
-export const dynamic = "force-dynamic"
 import { Footer } from "@/components/public/Footer"
 import { BannerHero } from "@/components/public/BannerHero"
 import { getSiteConfig } from "@/lib/site-config"
