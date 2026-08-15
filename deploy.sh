@@ -44,6 +44,14 @@ docker compose --env-file .env.production up -d --build
 echo "Waiting for PostgreSQL..."
 sleep 5
 
+# Synchroniser le mot de passe DB avec .env.production.
+# PostgreSQL ne lit POSTGRES_PASSWORD qu'a la 1re initialisation du volume :
+# sans ce reset, un changement de DB_PASSWORD dans .env.production fait
+# echouer l'auth (P1000) au deploiement suivant.
+echo "Synchronizing database password..."
+DB_PASSWORD=$(grep -E '^DB_PASSWORD=' .env.production | cut -d= -f2-)
+docker compose exec -T db psql -U parcelles -d parcelles -c "ALTER USER parcelles WITH PASSWORD '$DB_PASSWORD';"
+
 # Run migrations
 echo "Running Prisma migrations..."
 docker compose exec -T app npx prisma migrate deploy

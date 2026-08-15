@@ -99,5 +99,7 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml pull app
             docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d app
+            DB_PASSWORD=$(grep -E '^DB_PASSWORD=' .env.production | cut -d= -f2-)
+            docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml exec -T db psql -U parcelles -d parcelles -c "ALTER USER parcelles WITH PASSWORD '$DB_PASSWORD';"
             docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml exec -T app npx prisma migrate deploy
             docker image prune -f
