@@ -13,6 +13,7 @@ COPY . .
 ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
 RUN npx prisma generate
 RUN npm run build
+RUN mkdir -p /prisma-cli && npm install --prefix /prisma-cli --no-save --omit=dev prisma@$(node -p "require('prisma/package.json').version") dotenv@$(node -p "require('./node_modules/dotenv/package.json').version")
 
 FROM base AS runner
 WORKDIR /app
@@ -26,6 +27,7 @@ RUN apk add --no-cache libc6-compat
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /prisma-cli/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
